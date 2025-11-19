@@ -2,15 +2,15 @@ import './Sidebar.css'
 
 function Sidebar({ currentPage, onPageChange, currentUser, onLogout }) {
   const menuItems = [
-    { id: 'offers', label: 'Предложения', icon: '📋' },
-    { id: 'suppliers', label: 'Поставщики', icon: '🏢' },
-    { id: 'clients', label: 'Клиенты', icon: '👥' },
-    { id: 'products', label: 'Товары', icon: '📦' },
-    { id: 'deals', label: 'Сделки', icon: '🤝' },
-    { id: 'warehouse', label: 'Склад', icon: '🏭' },
-    { id: 'documents', label: 'Документы', icon: '📄' },
-    { id: 'finance', label: 'Финансы', icon: '💰' },
-    { id: 'reports', label: 'Отчеты', icon: '📊' },
+    { id: 'offers', label: 'Предложения', icon: 'description' },
+    { id: 'suppliers', label: 'Поставщики', icon: 'business' },
+    { id: 'clients', label: 'Клиенты', icon: 'people' },
+    { id: 'products', label: 'Товары', icon: 'inventory_2' },
+    { id: 'deals', label: 'Сделки', icon: 'handshake' },
+    { id: 'warehouse', label: 'Склад', icon: 'warehouse' },
+    { id: 'documents', label: 'Документы', icon: 'article' },
+    { id: 'finance', label: 'Финансы', icon: 'payments' },
+    { id: 'reports', label: 'Отчеты', icon: 'assessment' },
   ]
 
   return (
@@ -18,7 +18,7 @@ function Sidebar({ currentPage, onPageChange, currentUser, onLogout }) {
       <div className="sidebar-header">
         <img 
           src="/logo.png" 
-          alt="art crm" 
+          alt="CRM317" 
           className="sidebar-logo"
         />
       </div>
@@ -29,11 +29,8 @@ function Sidebar({ currentPage, onPageChange, currentUser, onLogout }) {
             className={`sidebar-item ${currentPage === item.id ? 'active' : ''}`}
             onClick={() => onPageChange(item.id)}
           >
-            <span className="sidebar-item-icon">{item.icon}</span>
+            <span className="material-icons sidebar-item-icon">{item.icon}</span>
             <span className="sidebar-item-label">{item.label}</span>
-            {currentPage === item.id && (
-              <span className="sidebar-item-indicator">●</span>
-            )}
           </button>
         ))}
       </nav>
@@ -43,7 +40,7 @@ function Sidebar({ currentPage, onPageChange, currentUser, onLogout }) {
           className="sidebar-logout-btn"
           title="Выйти из системы"
         >
-          <span className="sidebar-item-icon">👤</span>
+          <span className="material-icons sidebar-item-icon">person</span>
           <span className="sidebar-item-label">{currentUser}</span>
           <span className="sidebar-logout-text">(Выход)</span>
         </button>

@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import LotCard from './components/LotCard'
 import Toast from './components/Toast'
 import Login from './components/Login'
 import Sidebar from './components/Sidebar'
+import Warehouse from './components/Warehouse'
+import Products from './components/Products'
 import './index.css'
 
 const N8N_BASE = 'https://quageyamoulu.beget.app'
@@ -23,19 +25,37 @@ function App() {
   })
 
   const [currentPage, setCurrentPage] = useState('offers')
-
   const [allLots, setAllLots] = useState([])
   const [statusFilter, setStatusFilter] = useState('all')
   const [supplierFilter, setSupplierFilter] = useState('')
   const [refreshInterval, setRefreshInterval] = useState(5)
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('ui_theme')
-    return saved === 'dark' || saved === 'light' ? saved : 'light'
+    return saved === 'dark' || saved === 'light' ? saved : 'dark'
   })
   const [statusMessage, setStatusMessage] = useState('')
   const [statusError, setStatusError] = useState(false)
   const [toasts, setToasts] = useState([])
   const [notifyLoading, setNotifyLoading] = useState(false)
+  const knownLotIdsRef = useRef(new Set())
+  const [isOffersPageActive, setIsOffersPageActive] = useState(false)
+  const [newlyAppearedLotIds, setNewlyAppearedLotIds] = useState(new Set())
+  
+  // Отслеживание переключения на страницу "Предложения"
+  useEffect(() => {
+    if (currentPage === 'offers') {
+      // Если только что переключились на страницу "Предложения", 
+      // обновляем известные ID всех текущих лотов (без мигания)
+      if (!isOffersPageActive) {
+        const allIds = new Set(allLots.map(lot => lot.id))
+        knownLotIdsRef.current = allIds
+        setNewlyAppearedLotIds(new Set())
+      }
+      setIsOffersPageActive(true)
+    } else {
+      setIsOffersPageActive(false)
+    }
+  }, [currentPage, allLots, isOffersPageActive])
 
   // Применение темы
   useEffect(() => {
@@ -104,6 +124,37 @@ function App() {
       }
 
       const normalized = normalizeLots(data)
+      
+      // Если мы на странице "Предложения" и она уже была активна, определяем новые лоты
+      if (isOffersPageActive && currentPage === 'offers') {
+        const currentIds = new Set(normalized.map(lot => lot.id))
+        const newIds = normalized
+          .filter(lot => !knownLotIdsRef.current.has(lot.id))
+          .map(lot => lot.id)
+        
+        // Если есть новые лоты, добавляем их в список для мигания
+        if (newIds.length > 0) {
+          setNewlyAppearedLotIds(new Set(newIds))
+          // Через 4 секунды убираем из списка мигающих (после завершения анимации)
+          setTimeout(() => {
+            setNewlyAppearedLotIds(prev => {
+              const updated = new Set(prev)
+              newIds.forEach(id => updated.delete(id))
+              return updated
+            })
+          }, 4000)
+        }
+        
+        // Обновляем известные ID
+        currentIds.forEach(id => knownLotIdsRef.current.add(id))
+      } else {
+        // Если страница только что открыта или мы не на странице "Предложения", 
+        // просто обновляем известные ID без мигания
+        const allIds = new Set(normalized.map(lot => lot.id))
+        knownLotIdsRef.current = allIds
+        setNewlyAppearedLotIds(new Set())
+      }
+      
       setAllLots(normalized)
       setStatusError(false)
     } catch (e) {
@@ -112,7 +163,7 @@ function App() {
       setStatusError(true)
       showToast('Ошибка загрузки лотов: ' + e.message, 'error')
     }
-  }, [normalizeLots, showToast])
+  }, [normalizeLots, showToast, isOffersPageActive, currentPage])
 
   // Автообновление (только если авторизован)
   useEffect(() => {
@@ -122,6 +173,15 @@ function App() {
     const interval = setInterval(fetchLots, refreshInterval * 1000)
     return () => clearInterval(interval)
   }, [fetchLots, refreshInterval, isAuthenticated])
+
+  // Обновление известных ID при первой загрузке на странице "Предложения"
+  useEffect(() => {
+    if (currentPage === 'offers' && allLots.length > 0 && knownLotIdsRef.current.size === 0) {
+      const allIds = new Set(allLots.map(lot => lot.id))
+      knownLotIdsRef.current = allIds
+      setNewlyAppearedLotIds(new Set())
+    }
+  }, [currentPage, allLots])
 
   // Фильтрация лотов
   const filteredLots = useMemo(() => {
@@ -276,9 +336,10 @@ function App() {
                       onClick={handleNotifySuppliers}
                       disabled={notifyLoading}
                       className="btn btn-primary"
-                      style={{ padding: '10px 16px', fontSize: '13px' }}
+                      style={{ padding: '10px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
                     >
-                      📢 Уведомить поставщиков
+                      <span className="material-icons" style={{ fontSize: '18px' }}>campaign</span>
+                      Уведомить поставщиков
                     </button>
                   </div>
                 </div>
@@ -335,7 +396,9 @@ function App() {
                     </select>
                   </div>
                   <button onClick={toggleTheme} className="btn-theme">
-                    <span>{theme === 'dark' ? '🌙' : '🌞'}</span>
+                    <span className="material-icons" style={{ fontSize: '18px' }}>
+                      {theme === 'dark' ? 'dark_mode' : 'light_mode'}
+                    </span>
                     <span>{theme === 'dark' ? 'Тёмная тема' : 'Светлая тема'}</span>
                   </button>
                   <button onClick={handleResetFilters} className="btn-reset">
@@ -354,26 +417,30 @@ function App() {
                 {filteredLots.length === 0 ? (
                   <div className="empty">Нет лотов со статусом parsed.</div>
                 ) : (
-                  filteredLots.map(lot => (
-                    <LotCard
-                      key={lot.id}
-                      lot={lot}
-                      onAccept={handleAccept}
-                      onReject={handleReject}
-                    />
-                  ))
+                  filteredLots.map(lot => {
+                    const isNewlyAppeared = newlyAppearedLotIds.has(lot.id)
+                    return (
+                      <LotCard
+                        key={lot.id}
+                        lot={lot}
+                        onAccept={handleAccept}
+                        onReject={handleReject}
+                        shouldPulse={isNewlyAppeared}
+                      />
+                    )
+                  })
                 )}
               </div>
             </>
           )}
-          {currentPage !== 'offers' && (
+          {currentPage === 'warehouse' && <Warehouse />}
+          {currentPage === 'products' && <Products />}
+          {currentPage !== 'offers' && currentPage !== 'warehouse' && currentPage !== 'products' && (
             <div style={{ padding: '40px 20px', textAlign: 'center' }}>
               <h2 style={{ color: 'var(--text-main)', marginBottom: '12px' }}>
                 {currentPage === 'suppliers' && 'Поставщики'}
                 {currentPage === 'clients' && 'Клиенты'}
-                {currentPage === 'products' && 'Товары'}
                 {currentPage === 'deals' && 'Сделки'}
-                {currentPage === 'warehouse' && 'Склад'}
                 {currentPage === 'documents' && 'Документы'}
                 {currentPage === 'finance' && 'Финансы'}
                 {currentPage === 'reports' && 'Отчеты'}

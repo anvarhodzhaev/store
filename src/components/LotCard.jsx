@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FaWhatsapp } from 'react-icons/fa'
 
 function getStatusClass(status) {
   const s = (status || 'parsed').toLowerCase()
@@ -8,6 +9,16 @@ function getStatusClass(status) {
   return 'status-parsed'
 }
 
+function getPhoneFromWhatsappId(whatsappId) {
+  if (!whatsappId) return null
+
+  const beforeAt = String(whatsappId).split('@')[0]
+  const mainPart = beforeAt.split('-')[0]
+  const digits = mainPart.replace(/\D/g, '')
+
+  return digits || null
+}
+
 function isFreshLot(lot) {
   if (!lot.received_at) return false
   const t = new Date(lot.received_at).getTime()
@@ -15,15 +26,26 @@ function isFreshLot(lot) {
   return Date.now() - t < 5 * 60 * 1000
 }
 
-function LotCard({ lot, onAccept, onReject }) {
+function LotCard({ lot, onAccept, onReject, shouldPulse = false }) {
   const [margin, setMargin] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
 
   const statusClass = getStatusClass(lot.status)
   const freshClass = isFreshLot(lot) ? ' lot-card--fresh' : ''
+  const isNewStatus = (lot.status || '').toLowerCase() === 'new'
+  // Мигание только если shouldPulse = true (новый лот появился во время просмотра)
+  const newClass = (isNewStatus && shouldPulse) ? ' lot-card--new' : ''
   const createdAt = lot.received_at ? new Date(lot.received_at).toLocaleString() : ''
   const supplierName = lot.supplier_name || lot.supplier_id || '-'
   const positions = Array.isArray(lot.positions) ? lot.positions : []
+
+  // 🔹 добавлено
+  const regions = [...new Set(positions.map((p) => p.region).filter(Boolean).filter(r => r.toLowerCase() !== 'unknown'))]
+  const activations = [...new Set(positions.map((p) => p.activation).filter(Boolean).filter(a => a.toLowerCase() !== 'unknown'))]
+
+  // WhatsApp
+  const rawWhatsappId = lot.supplier_whatsapp_id || null
+  const waPhone = getPhoneFromWhatsappId(rawWhatsappId)
 
   const handleAccept = async () => {
     setIsLoading(true)
@@ -44,7 +66,7 @@ function LotCard({ lot, onAccept, onReject }) {
   }
 
   return (
-    <div className={`lot-card${freshClass}`} data-lot-id={lot.id}>
+    <div className={`lot-card${freshClass}${newClass}`} data-lot-id={lot.id}>
       <div className="lot-header-row">
         <div className="lot-title">
           <span>Лот #{lot.id}</span>
@@ -55,9 +77,27 @@ function LotCard({ lot, onAccept, onReject }) {
       </div>
 
       <div className="lot-meta-main">
-        <div className="lot-supplier">{supplierName}</div>
+        <div className="lot-supplier" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>{supplierName}</span>
+          {waPhone && (
+            <a
+              href={`https://wa.me/${waPhone}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Написать в WhatsApp"
+              style={{ display: 'inline-flex', color: '#25D366', textDecoration: 'none' }}
+            >
+              <FaWhatsapp size={22} />
+            </a>
+          )}
+        </div>
         {createdAt && <div className="lot-datetime">{createdAt}</div>}
-        {lot.region && <div className="lot-region">{lot.region}</div>}
+        {regions.length > 0 && (
+          <div className="lot-region">Регион: {regions.join(', ')}</div>
+        )}
+        {activations.length > 0 && (
+          <div className="lot-activation">Активация: {activations.join(', ')}</div>
+        )}
       </div>
 
       <div className="lot-positions">
@@ -70,6 +110,8 @@ function LotCard({ lot, onAccept, onReject }) {
                 <th>Объём</th>
                 <th>Кол-во</th>
                 <th>Цена</th>
+                <th>Регион</th>
+                <th>Активация</th>
               </tr>
             </thead>
             <tbody>
@@ -84,6 +126,8 @@ function LotCard({ lot, onAccept, onReject }) {
                       ? p.unit_price + ' ' + (p.currency || '')
                       : ''}
                   </td>
+                  <td>{(p.region && p.region.toLowerCase() !== 'unknown') ? p.region : ''}</td>
+                  <td>{(p.activation && p.activation.toLowerCase() !== 'unknown') ? p.activation : ''}</td>
                 </tr>
               ))}
             </tbody>

@@ -39,6 +39,25 @@
   box-sizing: border-box;
 }
 
+/* ───── Material Icons ───── */
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -253,11 +272,11 @@ body {
   border-color: #9ca3af;
 }
 
-/* ───── Лоты: адаптивная сетка ───── */
+/* ───── Лоты: 2 колонки ───── */
 
 .lots-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   align-items: start;
 }
@@ -265,12 +284,6 @@ body {
 @media (max-width: 900px) {
   .lots-container {
     grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (min-width: 1400px) {
-  .lots-container {
-    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
   }
 }
 
@@ -301,6 +314,52 @@ body {
 .lot-card--fresh {
   border-color: rgba(56,189,248,0.9);
   box-shadow: 0 0 0 2px rgba(56,189,248,0.4), var(--shadow-card-strong);
+}
+
+.lot-card--new {
+  animation: pulseHighlight 2s ease-in-out 2;
+}
+
+@keyframes pulseHighlight {
+  0%, 100% {
+    box-shadow: var(--shadow-card);
+    border-color: var(--border-subtle);
+  }
+  25% {
+    box-shadow: 0 0 0 3px rgba(129,140,248,0.6), 0 18px 40px rgba(129,140,248,0.3);
+    border-color: rgba(129,140,248,0.9);
+  }
+  50% {
+    box-shadow: var(--shadow-card);
+    border-color: var(--border-subtle);
+  }
+  75% {
+    box-shadow: 0 0 0 3px rgba(129,140,248,0.6), 0 18px 40px rgba(129,140,248,0.3);
+    border-color: rgba(129,140,248,0.9);
+  }
+}
+
+[data-theme="dark"] .lot-card--new {
+  animation: pulseHighlightDark 2s ease-in-out 2;
+}
+
+@keyframes pulseHighlightDark {
+  0%, 100% {
+    box-shadow: var(--shadow-card);
+    border-color: var(--border-subtle);
+  }
+  25% {
+    box-shadow: 0 0 0 3px rgba(129,140,248,0.8), 0 18px 40px rgba(129,140,248,0.5);
+    border-color: rgba(129,140,248,1);
+  }
+  50% {
+    box-shadow: var(--shadow-card);
+    border-color: var(--border-subtle);
+  }
+  75% {
+    box-shadow: 0 0 0 3px rgba(129,140,248,0.8), 0 18px 40px rgba(129,140,248,0.5);
+    border-color: rgba(129,140,248,1);
+  }
 }
 
 .lot-header-row {
@@ -343,9 +402,18 @@ body {
   border: 1px solid rgba(248,113,113,0.5);
 }
 .status-new {
-  background: rgba(129,140,248,0.15);
-  color: #4338ca;
-  border: 1px solid rgba(129,140,248,0.5);
+  background: rgba(129,140,248,0.35);
+  color: #6366f1;
+  border: 1px solid rgba(129,140,248,0.8);
+  font-weight: 600;
+  box-shadow: 0 0 8px rgba(129,140,248,0.4);
+}
+
+[data-theme="dark"] .status-new {
+  background: rgba(129,140,248,0.4);
+  color: #818cf8;
+  border: 1px solid rgba(129,140,248,0.9);
+  box-shadow: 0 0 12px rgba(129,140,248,0.6);
 }
 
 .lot-meta-main {
@@ -363,13 +431,15 @@ body {
 }
 
 .lot-datetime,
-.lot-region {
+.lot-region,
+.lot-activation {
   font-size: 12px;
   color: var(--text-muted);
 }
 
 .lot-datetime::before,
-.lot-region::before {
+.lot-region::before,
+.lot-activation::before {
   content: "•";
   margin-right: 6px;
   color: #9ca3af;

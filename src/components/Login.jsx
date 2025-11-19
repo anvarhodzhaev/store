@@ -51,7 +51,7 @@ function Login({ onLogin }) {
         <div className="login-header">
           <img 
             src="/logo.png" 
-            alt="art crm" 
+            alt="CRM317" 
             className="login-logo"
           />
           <p className="login-subtitle">Войдите в систему для продолжения</p>
