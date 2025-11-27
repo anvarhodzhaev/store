@@ -1,0 +1,340 @@
+.page {
+  width: 100%;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.page-title {
+  margin: 0 0 4px 0;
+  font-size: 28px;
+  color: var(--text-main);
+}
+
+.page-subtitle {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Карточки */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+}
+
+/* Фильтры */
+.clients-filters {
+  margin-bottom: 24px;
+}
+
+.clients-filters-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.clients-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.clients-filter label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.input,
+.select {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+}
+
+[data-theme="dark"] .input,
+[data-theme="dark"] .select {
+  background: rgba(15,23,42,0.5);
+  border-color: #1f2937;
+}
+
+/* Карточка с клиентами */
+.clients-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.clients-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Таблица */
+.clients-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.clients-table thead {
+  background: rgba(59,130,246,0.05);
+}
+
+[data-theme="dark"] .clients-table thead {
+  background: rgba(15,23,42,0.8);
+}
+
+.clients-table th {
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  border-bottom: 2px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.clients-table td {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.clients-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.clients-table tbody tr:hover {
+  background: rgba(59,130,246,0.05);
+}
+
+[data-theme="dark"] .clients-table tbody tr:hover {
+  background: rgba(59,130,246,0.1);
+}
+
+/* Ячейка с телефоном */
+.clients-phone-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Действия */
+.clients-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+/* Статус клиента */
+.client-status {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.client-status--active {
+  background: rgba(34,197,94,0.15);
+  color: #16a34a;
+}
+
+.client-status--inactive {
+  background: rgba(148,163,184,0.15);
+  color: var(--text-muted);
+}
+
+.client-status--blocked {
+  background: rgba(239,68,68,0.15);
+  color: var(--danger);
+}
+
+/* Кнопка WhatsApp */
+.btn-wa {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 6px;
+  border: none;
+  background: rgba(34,197,94,0.1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, transform 0.1s ease;
+  color: #25D366;
+}
+
+.btn-wa:hover {
+  background: rgba(34,197,94,0.2);
+  transform: scale(1.05);
+}
+
+.btn-wa svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Модальное окно */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.modal {
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-title {
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-main);
+  padding: 24px 24px 0;
+}
+
+.modal-body {
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-row label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.modal-footer .btn {
+  min-width: 100px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .clients-filters-row {
+    flex-direction: column;
+  }
+
+  .clients-filter {
+    min-width: 100%;
+  }
+
+  .clients-table {
+    font-size: 12px;
+  }
+
+  .clients-table th,
+  .clients-table td {
+    padding: 10px 8px;
+  }
+
+  .clients-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .modal {
+    max-width: 100%;
+    margin: 10px;
+  }
+
+  .modal-title {
+    padding: 20px 20px 0;
+    font-size: 18px;
+  }
+
+  .modal-body {
+    padding: 0 20px 20px;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+  }
+}
+
