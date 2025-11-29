@@ -288,10 +288,16 @@ body {
 }
 
 .lot-card {
-  background: var(--bg-card);
+  background: radial-gradient(
+      circle at top left,
+      rgba(56, 189, 248, 0.24),
+      transparent
+    ),
+    rgba(15, 23, 42, 0.96);
   border-radius: var(--radius-card);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  box-shadow: 0 16px 45px rgba(15, 23, 42, 0.75);
+  color: #e5e7eb;
   padding: 18px 18px 16px;
   transition: border-color 0.18s ease, box-shadow 0.2s ease, transform 0.14s ease, background 0.18s ease;
   animation: fadeUp 0.35s ease-out both;
@@ -303,12 +309,7 @@ body {
 
 .lot-card:hover {
   transform: translateY(-3px);
-  box-shadow: var(--shadow-card-strong);
-  background: rgba(255,255,255,0.98);
-}
-
-[data-theme="dark"] .lot-card:hover {
-  background: radial-gradient(circle at top left, #111827 0, #020617 45%);
+  box-shadow: 0 20px 55px rgba(15, 23, 42, 0.85);
 }
 
 .lot-card--fresh {

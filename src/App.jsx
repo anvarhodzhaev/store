@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar'
 import Warehouse from './components/Warehouse'
 import Products from './components/Products'
 import Clients from './components/Clients'
+import Deals from './components/Deals'
 import './index.css'
 
 const N8N_BASE = 'https://quageyamoulu.beget.app'
@@ -437,11 +438,11 @@ function App() {
           {currentPage === 'warehouse' && <Warehouse />}
           {currentPage === 'products' && <Products />}
           {currentPage === 'clients' && <Clients />}
-          {currentPage !== 'offers' && currentPage !== 'warehouse' && currentPage !== 'products' && currentPage !== 'clients' && (
+          {currentPage === 'deals' && <Deals />}
+          {currentPage !== 'offers' && currentPage !== 'warehouse' && currentPage !== 'products' && currentPage !== 'clients' && currentPage !== 'deals' && (
             <div style={{ padding: '40px 20px', textAlign: 'center' }}>
               <h2 style={{ color: 'var(--text-main)', marginBottom: '12px' }}>
                 {currentPage === 'suppliers' && 'Поставщики'}
-                {currentPage === 'deals' && 'Сделки'}
                 {currentPage === 'documents' && 'Документы'}
                 {currentPage === 'finance' && 'Финансы'}
                 {currentPage === 'reports' && 'Отчеты'}
