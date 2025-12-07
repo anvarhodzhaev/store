@@ -12,6 +12,7 @@ import './index.css'
 const N8N_BASE = 'https://quageyamoulu.beget.app'
 const LOTS_URL = `${N8N_BASE}/webhook/lots`
 const ACCEPT_URL = `${N8N_BASE}/webhook/lots/accept`
+const TELEGRAM_ACCEPT_URL = `${N8N_BASE}/webhook/lots/accept-telegram`
 const REJECT_URL = `${N8N_BASE}/webhook/lots/reject`
 const SUPPLIERS_NOTIFY_URL = `${N8N_BASE}/webhook/send-to-suppliers`
 
@@ -215,7 +216,7 @@ function App() {
     }
   }, [filteredLots.length, allLots.length])
 
-  // Обработка принятия лота
+  // Обработка принятия лота (WhatsApp)
   const handleAccept = useCallback(async (lotId, margin) => {
     setStatusMessage(`Отправляю лот #${lotId} с маржой ${margin}%…`)
     try {
@@ -234,6 +235,28 @@ function App() {
       setStatusMessage('Ошибка отправки: ' + e.message)
       setStatusError(true)
       showToast('Ошибка отправки: ' + e.message, 'error')
+    }
+  }, [showToast])
+
+  // Обработка отправки лота в Telegram
+  const handleAcceptTelegram = useCallback(async (lotId, margin) => {
+    setStatusMessage(`Отправляю лот #${lotId} в Telegram с маржой ${margin}%…`)
+    try {
+      const res = await fetch(TELEGRAM_ACCEPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lot_id: lotId, margin_percent: margin })
+      })
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+
+      setAllLots(prev => prev.filter(item => item.id !== lotId))
+      setStatusMessage(`Лот #${lotId} отправлен в Telegram.`)
+      showToast(`Лот #${lotId} отправлен в Telegram`, 'success')
+    } catch (e) {
+      console.error(e)
+      setStatusMessage('Ошибка отправки в Telegram: ' + e.message)
+      setStatusError(true)
+      showToast('Ошибка отправки в Telegram: ' + e.message, 'error')
     }
   }, [showToast])
 
@@ -332,7 +355,9 @@ function App() {
               <div className="app-header">
                 <div className="app-title">
                   <h1>Предложения поставщиков</h1>
-                  <div className="app-subtitle">Оценка прайсов и отправка в WhatsApp-группы</div>
+                  <div className="app-subtitle">
+                    Оценка прайсов и отправка в WhatsApp/Telegram группы
+                  </div>
                   <div style={{ marginTop: '8px' }}>
                     <button
                       onClick={handleNotifySuppliers}
@@ -425,7 +450,8 @@ function App() {
                       <LotCard
                         key={lot.id}
                         lot={lot}
-                        onAccept={handleAccept}
+                        onAccept={handleAccept}                 // WhatsApp
+                        onAcceptTelegram={handleAcceptTelegram} // Telegram
                         onReject={handleReject}
                         shouldPulse={isNewlyAppeared}
                       />
@@ -464,4 +490,3 @@ function App() {
 }
 
 export default App
-

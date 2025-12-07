@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FaWhatsapp } from 'react-icons/fa'
+import { FaWhatsapp, FaTelegram } from 'react-icons/fa'
 
 function getStatusClass(status) {
   const s = (status || 'parsed').toLowerCase()
@@ -26,37 +26,62 @@ function isFreshLot(lot) {
   return Date.now() - t < 5 * 60 * 1000
 }
 
-function LotCard({ lot, onAccept, onReject, shouldPulse = false }) {
+function LotCard({
+  lot,
+  onAccept,
+  onReject,
+  onAcceptTelegram,   // 🔹 новый проп
+  shouldPulse = false,
+}) {
   const [margin, setMargin] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
 
   const statusClass = getStatusClass(lot.status)
   const freshClass = isFreshLot(lot) ? ' lot-card--fresh' : ''
   const isNewStatus = (lot.status || '').toLowerCase() === 'new'
-  // Мигание только если shouldPulse = true (новый лот появился во время просмотра)
   const newClass = (isNewStatus && shouldPulse) ? ' lot-card--new' : ''
   const createdAt = lot.received_at ? new Date(lot.received_at).toLocaleString() : ''
   const supplierName = lot.supplier_name || lot.supplier_id || '-'
   const positions = Array.isArray(lot.positions) ? lot.positions : []
 
-  // 🔹 добавлено
-  const regions = [...new Set(positions.map((p) => p.region).filter(Boolean).filter(r => r.toLowerCase() !== 'unknown'))]
-  const activations = [...new Set(positions.map((p) => p.activation).filter(Boolean).filter(a => a.toLowerCase() !== 'unknown'))]
+  const regions = [...new Set(
+    positions.map((p) => p.region).filter(Boolean).filter(r => r.toLowerCase() !== 'unknown')
+  )]
+  const activations = [...new Set(
+    positions.map((p) => p.activation).filter(Boolean).filter(a => a.toLowerCase() !== 'unknown')
+  )]
 
   // WhatsApp
   const rawWhatsappId = lot.supplier_whatsapp_id || null
   const waPhone = getPhoneFromWhatsappId(rawWhatsappId)
 
-  const handleAccept = async () => {
+  // 🔹 отправка в WhatsApp
+  const handleAcceptWhatsapp = async () => {
+    if (!onAccept) return
     setIsLoading(true)
     try {
-      await onAccept(lot.id, margin)
+      // третий аргумент "whatsapp" — если захочешь различать канал в n8n
+      await onAccept(lot.id, margin, 'whatsapp')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // 🔹 отправка в Telegram
+  const handleAcceptTelegram = async () => {
+    const handler = onAcceptTelegram || onAccept
+    if (!handler) return
+    setIsLoading(true)
+    try {
+      // третий аргумент "telegram"
+      await handler(lot.id, margin, 'telegram')
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleReject = async () => {
+    if (!onReject) return
     setIsLoading(true)
     try {
       await onReject(lot.id)
@@ -151,24 +176,34 @@ function LotCard({ lot, onAccept, onReject, shouldPulse = false }) {
             disabled={isLoading}
           />
         </label>
-        <button
-          className="btn btn-primary btn-accept"
-          onClick={handleAccept}
-          disabled={isLoading}
-        >
-          Отправить
-        </button>
-        <button
-          className="btn btn-danger btn-reject"
-          onClick={handleReject}
-          disabled={isLoading}
-        >
-          Отклонить
-        </button>
+        <div className="lot-actions-buttons">
+          <button
+            className="btn btn-primary btn-accept"
+            onClick={handleAcceptWhatsapp}
+            disabled={isLoading}
+          >
+            <FaWhatsapp size={16} style={{ marginRight: '6px' }} />
+            Отправить в WhatsApp
+          </button>
+          <button
+            className="btn btn-telegram"
+            onClick={handleAcceptTelegram}
+            disabled={isLoading}
+          >
+            <FaTelegram size={16} style={{ marginRight: '6px' }} />
+            Отправить в Telegram
+          </button>
+          <button
+            className="btn btn-danger btn-reject"
+            onClick={handleReject}
+            disabled={isLoading}
+          >
+            Отклонить
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
 export default LotCard
-

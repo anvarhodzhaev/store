@@ -142,7 +142,7 @@ export default function DealCard({ deal }) {
         <div className="deal-progress-block">
           <div className="deal-progress-header">
             <span>
-              Подтверждено клиентом:{' '}
+              Подтверждено клиентами:{' '}
               <strong>{soldPercentDisplay}%</strong>
             </span>
             <span>
@@ -168,7 +168,7 @@ export default function DealCard({ deal }) {
           </div>
           <div className="deal-progress-footer">
             <span>
-              Продано:{' '}
+              Подтверждено:{' '}
               <strong>
                 {soldQty} / {totalQty}
               </strong>
@@ -187,7 +187,7 @@ export default function DealCard({ deal }) {
         {lotLines.length > 0 && (
           <div className="deal-lot-block">
             <div className="deal-section-title">
-              ТОВАРЫ В ПРЕДЛОЖЕНИИ
+              ТОВАРЫ В ПРЕДЛОЖЕНИИ ПОСТАВЩИКА
             </div>
             <div className="deal-lot-lines">
               {lotLines.map((line, idx) => (
@@ -357,7 +357,7 @@ export default function DealCard({ deal }) {
       <div className="deal-column deal-column-actions">
         <button
           type="button"
-          className="btn btn-secondary deal-btn-actions"
+          className="btn btn-primary deal-btn-small"
           onClick={() => {
             alert(
               `Здесь будет перевод сделки #${dealId} в архив`

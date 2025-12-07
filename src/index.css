@@ -522,11 +522,19 @@ tbody tr:nth-child(even) td {
 .lot-actions {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
   margin-top: auto;
   border-top: 1px solid #e5e7eb;
   padding-top: 10px;
+}
+
+.lot-actions-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
 }
 
 [data-theme="dark"] .lot-actions {
@@ -585,6 +593,18 @@ tbody tr:nth-child(even) td {
   background: var(--accent-hover);
   transform: translateY(-1px);
   box-shadow: 0 14px 30px rgba(37,99,235,0.55);
+}
+
+.btn-telegram {
+  background: #0088cc;
+  color: #ffffff;
+  box-shadow: 0 10px 20px rgba(0,136,204,0.35);
+}
+
+.btn-telegram:hover:not(:disabled) {
+  background: #006ba3;
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(0,136,204,0.55);
 }
 
 .btn-danger {
