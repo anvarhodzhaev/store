@@ -30,7 +30,8 @@ function LotCard({
   lot,
   onAccept,
   onReject,
-  onAcceptTelegram,   // 🔹 новый проп
+  onAcceptTelegram,
+  onAcceptAll,      // 🔹 новый проп
   shouldPulse = false,
 }) {
   const [margin, setMargin] = useState(10)
@@ -39,17 +40,27 @@ function LotCard({
   const statusClass = getStatusClass(lot.status)
   const freshClass = isFreshLot(lot) ? ' lot-card--fresh' : ''
   const isNewStatus = (lot.status || '').toLowerCase() === 'new'
-  const newClass = (isNewStatus && shouldPulse) ? ' lot-card--new' : ''
+  const newClass = isNewStatus && shouldPulse ? ' lot-card--new' : ''
   const createdAt = lot.received_at ? new Date(lot.received_at).toLocaleString() : ''
   const supplierName = lot.supplier_name || lot.supplier_id || '-'
   const positions = Array.isArray(lot.positions) ? lot.positions : []
 
-  const regions = [...new Set(
-    positions.map((p) => p.region).filter(Boolean).filter(r => r.toLowerCase() !== 'unknown')
-  )]
-  const activations = [...new Set(
-    positions.map((p) => p.activation).filter(Boolean).filter(a => a.toLowerCase() !== 'unknown')
-  )]
+  const regions = [
+    ...new Set(
+      positions
+        .map(p => p.region)
+        .filter(Boolean)
+        .filter(r => r.toLowerCase() !== 'unknown'),
+    ),
+  ]
+  const activations = [
+    ...new Set(
+      positions
+        .map(p => p.activation)
+        .filter(Boolean)
+        .filter(a => a.toLowerCase() !== 'unknown'),
+    ),
+  ]
 
   // WhatsApp
   const rawWhatsappId = lot.supplier_whatsapp_id || null
@@ -60,7 +71,6 @@ function LotCard({
     if (!onAccept) return
     setIsLoading(true)
     try {
-      // третий аргумент "whatsapp" — если захочешь различать канал в n8n
       await onAccept(lot.id, margin, 'whatsapp')
     } finally {
       setIsLoading(false)
@@ -68,13 +78,29 @@ function LotCard({
   }
 
   // 🔹 отправка в Telegram
-  const handleAcceptTelegram = async () => {
+  const handleAcceptTelegramClick = async () => {
     const handler = onAcceptTelegram || onAccept
     if (!handler) return
     setIsLoading(true)
     try {
-      // третий аргумент "telegram"
       await handler(lot.id, margin, 'telegram')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // 🔹 отправка во все чаты
+  const handleAcceptAllClick = async () => {
+    setIsLoading(true)
+    try {
+      if (onAcceptAll) {
+        // основной путь — через отдельный вебхук /accept-all
+        await onAcceptAll(lot.id, margin)
+      } else {
+        // запасной вариант — по очереди
+        if (onAccept) await onAccept(lot.id, margin, 'whatsapp')
+        if (onAcceptTelegram) await onAcceptTelegram(lot.id, margin, 'telegram')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -102,7 +128,10 @@ function LotCard({
       </div>
 
       <div className="lot-meta-main">
-        <div className="lot-supplier" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div
+          className="lot-supplier"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
           <span>{supplierName}</span>
           {waPhone && (
             <a
@@ -110,7 +139,11 @@ function LotCard({
               target="_blank"
               rel="noopener noreferrer"
               title="Написать в WhatsApp"
-              style={{ display: 'inline-flex', color: '#25D366', textDecoration: 'none' }}
+              style={{
+                display: 'inline-flex',
+                color: '#25D366',
+                textDecoration: 'none',
+              }}
             >
               <FaWhatsapp size={22} />
             </a>
@@ -121,7 +154,9 @@ function LotCard({
           <div className="lot-region">Регион: {regions.join(', ')}</div>
         )}
         {activations.length > 0 && (
-          <div className="lot-activation">Активация: {activations.join(', ')}</div>
+          <div className="lot-activation">
+            Активация: {activations.join(', ')}
+          </div>
         )}
       </div>
 
@@ -151,8 +186,16 @@ function LotCard({
                       ? p.unit_price + ' ' + (p.currency || '')
                       : ''}
                   </td>
-                  <td>{(p.region && p.region.toLowerCase() !== 'unknown') ? p.region : ''}</td>
-                  <td>{(p.activation && p.activation.toLowerCase() !== 'unknown') ? p.activation : ''}</td>
+                  <td>
+                    {p.region && p.region.toLowerCase() !== 'unknown'
+                      ? p.region
+                      : ''}
+                  </td>
+                  <td>
+                    {p.activation && p.activation.toLowerCase() !== 'unknown'
+                      ? p.activation
+                      : ''}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -169,7 +212,7 @@ function LotCard({
             type="number"
             className="margin-input"
             value={margin}
-            onChange={(e) => setMargin(Number(e.target.value))}
+            onChange={e => setMargin(Number(e.target.value))}
             min="0"
             max="500"
             step="1"
@@ -187,11 +230,18 @@ function LotCard({
           </button>
           <button
             className="btn btn-telegram"
-            onClick={handleAcceptTelegram}
+            onClick={handleAcceptTelegramClick}
             disabled={isLoading}
           >
             <FaTelegram size={16} style={{ marginRight: '6px' }} />
             Отправить в Telegram
+          </button>
+          <button
+            className="btn btn-primary btn-accept-all"
+            onClick={handleAcceptAllClick}
+            disabled={isLoading}
+          >
+            Отправить во все чаты
           </button>
           <button
             className="btn btn-danger btn-reject"

@@ -15,6 +15,7 @@ const ACCEPT_URL = `${N8N_BASE}/webhook/lots/accept`
 const TELEGRAM_ACCEPT_URL = `${N8N_BASE}/webhook/lots/accept-telegram`
 const REJECT_URL = `${N8N_BASE}/webhook/lots/reject`
 const SUPPLIERS_NOTIFY_URL = `${N8N_BASE}/webhook/send-to-suppliers`
+const ACCEPT_ALL_URL = `${N8N_BASE}/webhook/lots/accept-all` // 🔹 новый вебхук
 
 function App() {
   // Авторизация
@@ -43,12 +44,10 @@ function App() {
   const knownLotIdsRef = useRef(new Set())
   const [isOffersPageActive, setIsOffersPageActive] = useState(false)
   const [newlyAppearedLotIds, setNewlyAppearedLotIds] = useState(new Set())
-  
+
   // Отслеживание переключения на страницу "Предложения"
   useEffect(() => {
     if (currentPage === 'offers') {
-      // Если только что переключились на страницу "Предложения", 
-      // обновляем известные ID всех текущих лотов (без мигания)
       if (!isOffersPageActive) {
         const allIds = new Set(allLots.map(lot => lot.id))
         knownLotIdsRef.current = allIds
@@ -66,18 +65,18 @@ function App() {
     localStorage.setItem('ui_theme', theme)
   }, [theme])
 
-  // Функция для показа toast
+  // Toast
   const showToast = useCallback((message, type = 'info') => {
     const id = Date.now()
     setToasts(prev => [...prev, { id, message, type }])
-    
+
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))
     }, 2800)
   }, [])
 
   // Нормализация данных лотов
-  const normalizeLots = useCallback((data) => {
+  const normalizeLots = useCallback(data => {
     if (!data) return []
 
     if (Array.isArray(data)) {
@@ -127,18 +126,15 @@ function App() {
       }
 
       const normalized = normalizeLots(data)
-      
-      // Если мы на странице "Предложения" и она уже была активна, определяем новые лоты
+
       if (isOffersPageActive && currentPage === 'offers') {
         const currentIds = new Set(normalized.map(lot => lot.id))
         const newIds = normalized
           .filter(lot => !knownLotIdsRef.current.has(lot.id))
           .map(lot => lot.id)
-        
-        // Если есть новые лоты, добавляем их в список для мигания
+
         if (newIds.length > 0) {
           setNewlyAppearedLotIds(new Set(newIds))
-          // Через 4 секунды убираем из списка мигающих (после завершения анимации)
           setTimeout(() => {
             setNewlyAppearedLotIds(prev => {
               const updated = new Set(prev)
@@ -147,17 +143,14 @@ function App() {
             })
           }, 4000)
         }
-        
-        // Обновляем известные ID
+
         currentIds.forEach(id => knownLotIdsRef.current.add(id))
       } else {
-        // Если страница только что открыта или мы не на странице "Предложения", 
-        // просто обновляем известные ID без мигания
         const allIds = new Set(normalized.map(lot => lot.id))
         knownLotIdsRef.current = allIds
         setNewlyAppearedLotIds(new Set())
       }
-      
+
       setAllLots(normalized)
       setStatusError(false)
     } catch (e) {
@@ -168,7 +161,7 @@ function App() {
     }
   }, [normalizeLots, showToast, isOffersPageActive, currentPage])
 
-  // Автообновление (только если авторизован)
+  // Автообновление
   useEffect(() => {
     if (!isAuthenticated) return
 
@@ -177,9 +170,13 @@ function App() {
     return () => clearInterval(interval)
   }, [fetchLots, refreshInterval, isAuthenticated])
 
-  // Обновление известных ID при первой загрузке на странице "Предложения"
+  // Обновление известных ID при первой загрузке
   useEffect(() => {
-    if (currentPage === 'offers' && allLots.length > 0 && knownLotIdsRef.current.size === 0) {
+    if (
+      currentPage === 'offers' &&
+      allLots.length > 0 &&
+      knownLotIdsRef.current.size === 0
+    ) {
       const allIds = new Set(allLots.map(lot => lot.id))
       knownLotIdsRef.current = allIds
       setNewlyAppearedLotIds(new Set())
@@ -191,8 +188,8 @@ function App() {
     let filtered = allLots.slice()
 
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(lot => 
-        ((lot.status || 'parsed').toLowerCase() === statusFilter)
+      filtered = filtered.filter(
+        lot => (lot.status || 'parsed').toLowerCase() === statusFilter,
       )
     }
 
@@ -207,7 +204,7 @@ function App() {
     return filtered
   }, [allLots, statusFilter, supplierFilter])
 
-  // Обновление статуса при изменении фильтров
+  // Текст статуса
   useEffect(() => {
     if (filteredLots.length) {
       setStatusMessage(`Показано ${filteredLots.length} из ${allLots.length} лотов`)
@@ -217,77 +214,113 @@ function App() {
   }, [filteredLots.length, allLots.length])
 
   // Обработка принятия лота (WhatsApp)
-  const handleAccept = useCallback(async (lotId, margin) => {
-    setStatusMessage(`Отправляю лот #${lotId} с маржой ${margin}%…`)
-    try {
-      const res = await fetch(ACCEPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lot_id: lotId, margin_percent: margin })
-      })
-      if (!res.ok) throw new Error('HTTP ' + res.status)
+  const handleAccept = useCallback(
+    async (lotId, margin) => {
+      setStatusMessage(`Отправляю лот #${lotId} с маржой ${margin}%…`)
+      try {
+        const res = await fetch(ACCEPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lot_id: lotId, margin_percent: margin }),
+        })
+        if (!res.ok) throw new Error('HTTP ' + res.status)
 
-      setAllLots(prev => prev.filter(item => item.id !== lotId))
-      setStatusMessage(`Лот #${lotId} отправлен.`)
-      showToast(`Лот #${lotId} отправлен`, 'success')
-    } catch (e) {
-      console.error(e)
-      setStatusMessage('Ошибка отправки: ' + e.message)
-      setStatusError(true)
-      showToast('Ошибка отправки: ' + e.message, 'error')
-    }
-  }, [showToast])
+        setAllLots(prev => prev.filter(item => item.id !== lotId))
+        setStatusMessage(`Лот #${lotId} отправлен.`)
+        showToast(`Лот #${lotId} отправлен`, 'success')
+      } catch (e) {
+        console.error(e)
+        setStatusMessage('Ошибка отправки: ' + e.message)
+        setStatusError(true)
+        showToast('Ошибка отправки: ' + e.message, 'error')
+      }
+    },
+    [showToast],
+  )
 
   // Обработка отправки лота в Telegram
-  const handleAcceptTelegram = useCallback(async (lotId, margin) => {
-    setStatusMessage(`Отправляю лот #${lotId} в Telegram с маржой ${margin}%…`)
-    try {
-      const res = await fetch(TELEGRAM_ACCEPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lot_id: lotId, margin_percent: margin })
-      })
-      if (!res.ok) throw new Error('HTTP ' + res.status)
+  const handleAcceptTelegram = useCallback(
+    async (lotId, margin) => {
+      setStatusMessage(
+        `Отправляю лот #${lotId} в Telegram с маржой ${margin}%…`,
+      )
+      try {
+        const res = await fetch(TELEGRAM_ACCEPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lot_id: lotId, margin_percent: margin }),
+        })
+        if (!res.ok) throw new Error('HTTP ' + res.status)
 
-      setAllLots(prev => prev.filter(item => item.id !== lotId))
-      setStatusMessage(`Лот #${lotId} отправлен в Telegram.`)
-      showToast(`Лот #${lotId} отправлен в Telegram`, 'success')
-    } catch (e) {
-      console.error(e)
-      setStatusMessage('Ошибка отправки в Telegram: ' + e.message)
-      setStatusError(true)
-      showToast('Ошибка отправки в Telegram: ' + e.message, 'error')
-    }
-  }, [showToast])
+        setAllLots(prev => prev.filter(item => item.id !== lotId))
+        setStatusMessage(`Лот #${lotId} отправлен в Telegram.`)
+        showToast(`Лот #${lotId} отправлен в Telegram`, 'success')
+      } catch (e) {
+        console.error(e)
+        setStatusMessage('Ошибка отправки: ' + e.message)
+        setStatusError(true)
+        showToast('Ошибка отправки: ' + e.message, 'error')
+      }
+    },
+    [showToast],
+  )
 
-  // Обработка отклонения лота
-  const handleReject = useCallback(async (lotId) => {
-    setStatusMessage(`Отклоняю лот #${lotId}…`)
-    try {
-      const res = await fetch(REJECT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lot_id: lotId })
-      })
-      if (!res.ok) throw new Error('HTTP ' + res.status)
+  // 🔹 Обработка отправки лота во все чаты
+  const handleAcceptAll = useCallback(
+    async (lotId, margin) => {
+      setStatusMessage(
+        `Отправляю лот #${lotId} во все чаты с маржой ${margin}%…`,
+      )
+      try {
+        const res = await fetch(ACCEPT_ALL_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lot_id: lotId, margin_percent: margin }),
+        })
+        if (!res.ok) throw new Error('HTTP ' + res.status)
 
-      setAllLots(prev => prev.filter(item => item.id !== lotId))
-      setStatusMessage(`Лот #${lotId} отклонён.`)
-      showToast(`Лот #${lotId} отклонён`, 'success')
-    } catch (e) {
-      console.error(e)
-      setStatusMessage('Ошибка отклонения: ' + e.message)
-      setStatusError(true)
-      showToast('Ошибка отклонения: ' + e.message, 'error')
-    }
-  }, [showToast])
+        setAllLots(prev => prev.filter(item => item.id !== lotId))
+        setStatusMessage(`Лот #${lotId} отправлен во все чаты.`)
+        showToast(`Лот #${lotId} отправлен во все чаты`, 'success')
+      } catch (e) {
+        console.error(e)
+        setStatusMessage('Ошибка отправки: ' + e.message)
+        setStatusError(true)
+        showToast('Ошибка отправки: ' + e.message, 'error')
+      }
+    },
+    [showToast],
+  )
 
-  // Уведомление поставщиков
+  // Отклонение лота
+  const handleReject = useCallback(
+    async lotId => {
+      setStatusMessage(`Отклоняю лот #${lotId}…`)
+      try {
+        const res = await fetch(REJECT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lot_id: lotId }),
+        })
+        if (!res.ok) throw new Error('HTTP ' + res.status)
+
+        setAllLots(prev => prev.filter(item => item.id !== lotId))
+        setStatusMessage(`Лот #${lotId} отклонён.`)
+        showToast(`Лот #${lotId} отклонён`, 'info')
+      } catch (e) {
+        console.error(e)
+        setStatusMessage('Ошибка отклонения: ' + e.message)
+        setStatusError(true)
+        showToast('Ошибка отклонения: ' + e.message, 'error')
+      }
+    },
+    [showToast],
+  )
+
+  // Уведомить поставщиков (верхняя кнопка)
   const handleNotifySuppliers = useCallback(async () => {
     setNotifyLoading(true)
-    setStatusMessage('Отправляю сообщение поставщикам...')
-    showToast('Отправка уведомления поставщикам…', 'info')
-
+    setStatusMessage('Отправляю уведомление поставщикам…')
     try {
       const res = await fetch(SUPPLIERS_NOTIFY_URL, { method: 'POST' })
       if (!res.ok) throw new Error('HTTP ' + res.status)
@@ -312,19 +345,22 @@ function App() {
 
   // Переключение темы
   const toggleTheme = useCallback(() => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark')
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'))
   }, [])
 
-  // Обработка входа
-  const handleLogin = useCallback((username) => {
-    setIsAuthenticated(true)
-    setCurrentUser(username)
-    localStorage.setItem('isAuthenticated', 'true')
-    localStorage.setItem('currentUser', username)
-    showToast(`Добро пожаловать, ${username}!`, 'success')
-  }, [showToast])
+  // Логин
+  const handleLogin = useCallback(
+    username => {
+      setIsAuthenticated(true)
+      setCurrentUser(username)
+      localStorage.setItem('isAuthenticated', 'true')
+      localStorage.setItem('currentUser', username)
+      showToast(`Добро пожаловать, ${username}!`, 'success')
+    },
+    [showToast],
+  )
 
-  // Выход
+  // Логаут
   const handleLogout = useCallback(() => {
     setIsAuthenticated(false)
     setCurrentUser('')
@@ -335,15 +371,15 @@ function App() {
     showToast('Вы вышли из системы', 'info')
   }, [showToast])
 
-  // Если не авторизован, показываем форму входа
+  // Если не авторизован
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />
   }
 
   return (
     <div className="app-layout">
-      <Sidebar 
-        currentPage={currentPage} 
+      <Sidebar
+        currentPage={currentPage}
         onPageChange={setCurrentPage}
         currentUser={currentUser}
         onLogout={handleLogout}
@@ -363,9 +399,20 @@ function App() {
                       onClick={handleNotifySuppliers}
                       disabled={notifyLoading}
                       className="btn btn-primary"
-                      style={{ padding: '10px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      style={{
+                        padding: '10px 16px',
+                        fontSize: '13px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
                     >
-                      <span className="material-icons" style={{ fontSize: '18px' }}>campaign</span>
+                      <span
+                        className="material-icons"
+                        style={{ fontSize: '18px' }}
+                      >
+                        campaign
+                      </span>
                       Уведомить поставщиков
                     </button>
                   </div>
@@ -385,7 +432,7 @@ function App() {
                       id="statusFilter"
                       className="filter-select"
                       value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
+                      onChange={e => setStatusFilter(e.target.value)}
                     >
                       <option value="all">Все</option>
                       <option value="parsed">Только parsed</option>
@@ -402,19 +449,23 @@ function App() {
                       type="text"
                       placeholder="AnvarStore …"
                       value={supplierFilter}
-                      onChange={(e) => setSupplierFilter(e.target.value)}
+                      onChange={e => setSupplierFilter(e.target.value)}
                     />
                   </div>
                 </div>
 
                 <div className="toolbar-right">
                   <div className="interval-control">
-                    <label htmlFor="intervalSelect">Интервал обновления</label>
+                    <label htmlFor="intervalSelect">
+                      Интервал обновления
+                    </label>
                     <select
                       id="intervalSelect"
                       className="filter-select"
                       value={refreshInterval}
-                      onChange={(e) => setRefreshInterval(Number(e.target.value))}
+                      onChange={e =>
+                        setRefreshInterval(Number(e.target.value))
+                      }
                     >
                       <option value="5">5 секунд</option>
                       <option value="15">15 секунд</option>
@@ -423,35 +474,54 @@ function App() {
                     </select>
                   </div>
                   <button onClick={toggleTheme} className="btn-theme">
-                    <span className="material-icons" style={{ fontSize: '18px' }}>
+                    <span
+                      className="material-icons"
+                      style={{ fontSize: '18px' }}
+                    >
                       {theme === 'dark' ? 'dark_mode' : 'light_mode'}
                     </span>
-                    <span>{theme === 'dark' ? 'Тёмная тема' : 'Светлая тема'}</span>
+                    <span>
+                      {theme === 'dark'
+                        ? 'Тёмная тема'
+                        : 'Светлая тема'}
+                    </span>
                   </button>
-                  <button onClick={handleResetFilters} className="btn-reset">
+                  <button
+                    onClick={handleResetFilters}
+                    className="btn-reset"
+                  >
                     Сбросить фильтры
                   </button>
                 </div>
               </div>
 
               {statusMessage && (
-                <div className="status-message" style={{ color: statusError ? '#fecaca' : undefined }}>
+                <div
+                  className="status-message"
+                  style={{
+                    color: statusError ? '#fecaca' : undefined,
+                  }}
+                >
                   {statusMessage}
                 </div>
               )}
 
               <div className="lots-container">
                 {filteredLots.length === 0 ? (
-                  <div className="empty">Нет лотов со статусом parsed.</div>
+                  <div className="empty">
+                    Нет лотов со статусом parsed.
+                  </div>
                 ) : (
                   filteredLots.map(lot => {
-                    const isNewlyAppeared = newlyAppearedLotIds.has(lot.id)
+                    const isNewlyAppeared =
+                      newlyAppearedLotIds.has(lot.id)
                     return (
                       <LotCard
                         key={lot.id}
                         lot={lot}
-                        onAccept={handleAccept}                 // WhatsApp
-                        onAcceptTelegram={handleAcceptTelegram} // Telegram
+                        onAccept={handleAccept}
+                        onAcceptTelegram={handleAcceptTelegram}
+                        onAcceptAll={handleAcceptAll}   // 🔹 сюда передаём
                         onReject={handleReject}
                         shouldPulse={isNewlyAppeared}
                       />
@@ -461,28 +531,45 @@ function App() {
               </div>
             </>
           )}
+
           {currentPage === 'warehouse' && <Warehouse />}
           {currentPage === 'products' && <Products />}
           {currentPage === 'clients' && <Clients />}
           {currentPage === 'deals' && <Deals />}
-          {currentPage !== 'offers' && currentPage !== 'warehouse' && currentPage !== 'products' && currentPage !== 'clients' && currentPage !== 'deals' && (
-            <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-              <h2 style={{ color: 'var(--text-main)', marginBottom: '12px' }}>
-                {currentPage === 'suppliers' && 'Поставщики'}
-                {currentPage === 'documents' && 'Документы'}
-                {currentPage === 'finance' && 'Финансы'}
-                {currentPage === 'reports' && 'Отчеты'}
-              </h2>
-              <p style={{ color: 'var(--text-muted)' }}>
-                Раздел в разработке
-              </p>
-            </div>
-          )}
+          {currentPage !== 'offers' &&
+            currentPage !== 'warehouse' &&
+            currentPage !== 'products' &&
+            currentPage !== 'clients' &&
+            currentPage !== 'deals' && (
+              <div
+                style={{
+                  padding: '40px 20px',
+                  textAlign: 'center',
+                }}
+              >
+                <h2
+                  style={{
+                    color: 'var(--text-main)',
+                    marginBottom: '8px',
+                  }}
+                >
+                  Раздел в разработке
+                </h2>
+                <p style={{ color: 'var(--text-muted)' }}>
+                  Выберите раздел в меню слева.
+                </p>
+              </div>
+            )}
         </div>
       </div>
+
       <div className="toast-container">
         {toasts.map(toast => (
-          <Toast key={toast.id} message={toast.message} type={toast.type} />
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+          />
         ))}
       </div>
     </div>
