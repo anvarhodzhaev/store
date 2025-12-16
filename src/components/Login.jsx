@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './Login.css'
 
-function Login({ onLogin }) {
+function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -22,7 +22,11 @@ function Login({ onLogin }) {
       const isValid = await validateCredentials(username, password)
       
       if (isValid) {
-        onLogin(username)
+        if (typeof onLoginSuccess === 'function') {
+          onLoginSuccess(username)
+        } else {
+          setError('Ошибка: функция авторизации не определена')
+        }
       } else {
         setError('Неверное имя пользователя или пароль')
       }

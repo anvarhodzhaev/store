@@ -343,13 +343,15 @@
 }
 
 /* Стили для кнопки "В архив" - такой же фон, как у "Запросить инвойс" */
-.btn.btn-primary.deal-btn-actions {
+.btn.btn-primary.deal-btn-actions,
+.btn.btn-primary.deal-btn-small {
   background: var(--accent) !important;
   color: #f9fafb !important;
   box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35) !important;
 }
 
-.btn.btn-primary.deal-btn-actions:hover:not(:disabled) {
+.btn.btn-primary.deal-btn-actions:hover:not(:disabled),
+.btn.btn-primary.deal-btn-small:hover:not(:disabled) {
   background: var(--accent-hover) !important;
   transform: translateY(-1px) !important;
   box-shadow: 0 14px 30px rgba(37, 99, 235, 0.55) !important;
