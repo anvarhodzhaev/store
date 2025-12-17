@@ -388,6 +388,8 @@ function App() {
         onPageChange={setCurrentPage}
         currentUser={currentUser}
         onLogout={handleLogout}
+        theme={theme}
+        setTheme={setTheme}
       />
 
       <div className="app-content">
@@ -474,14 +476,6 @@ function App() {
                 </div>
 
                 <div className="toolbar-right">
-                  <button
-                    className="btn btn-outline"
-                    onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
-                    title="Переключить тему"
-                  >
-                    {theme === 'dark' ? '🌙 Тёмная тема' : '☀️ Светлая тема'}
-                  </button>
-
                   <button
                     className="btn btn-outline"
                     onClick={() => {
