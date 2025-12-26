@@ -73,21 +73,37 @@ body {
   width: calc(100% - 260px);
 }
 
-.app { width: 100%; max-width: 100%; }
+.app { 
+  width: 100%; 
+  max-width: 100%; 
+  padding: 24px 32px;
+  box-sizing: border-box;
+}
 
 @media (max-width: 768px) {
+  .app { 
+    padding: 20px 16px;
+  }
   .app-content { margin-left: 0; width: 100%; }
 }
 
 .app-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   margin-bottom: 18px;
   gap: 12px;
+  flex-direction: column;
 }
 
-.app-title { display: flex; flex-direction: column; gap: 4px; }
+.app-title { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 4px; 
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
 
 .app-title h1 {
   margin: 0;
