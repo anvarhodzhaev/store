@@ -3,12 +3,7 @@ import { FaWhatsapp } from 'react-icons/fa'
 import { SiTelegram } from 'react-icons/si'
 import LotCard from './components/LotCard'
 import Toast from './components/Toast'
-import Login from './components/Login'
-import Sidebar from './components/Sidebar'
-import Warehouse from './components/Warehouse'
-import Products from './components/Products'
 import Clients from './components/Clients'
-import Deals from './components/Deals'
 import Suppliers from './components/Suppliers'
 import './index.css'
 
@@ -53,14 +48,6 @@ function normalizeLots(data) {
 }
 
 function App() {
-  // Авторизация
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('isAuthenticated') === 'true'
-  })
-  const [currentUser, setCurrentUser] = useState(() => {
-    return localStorage.getItem('currentUser') || ''
-  })
-
   const [currentPage, setCurrentPage] = useState('offers')
   const [allLots, setAllLots] = useState([])
   const [selectedLotIds, setSelectedLotIds] = useState(() => new Set())
@@ -118,39 +105,21 @@ function App() {
     }, 3500)
   }, [])
 
-  const handleLoginSuccess = useCallback((username) => {
-    setIsAuthenticated(true)
-    setCurrentUser(username)
-    localStorage.setItem('isAuthenticated', 'true')
-    localStorage.setItem('currentUser', username)
-  }, [])
-
-  const handleLogout = useCallback(() => {
-    setIsAuthenticated(false)
-    setCurrentUser('')
-    localStorage.removeItem('isAuthenticated')
-    localStorage.removeItem('currentUser')
-  }, [])
-
   // Установка темы
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('ui_theme', theme)
   }, [theme])
 
-  // Отслеживание переключения на страницу "Предложения"
+  // Отслеживание появления новых лотов
   useEffect(() => {
-    if (currentPage === 'offers') {
-      if (!isOffersPageActive) {
-        const allIds = new Set(allLots.map(lot => lot.id))
-        knownLotIdsRef.current = allIds
-        setNewlyAppearedLotIds(new Set())
-      }
-      setIsOffersPageActive(true)
-    } else {
-      setIsOffersPageActive(false)
+    if (!isOffersPageActive) {
+      const allIds = new Set(allLots.map(lot => lot.id))
+      knownLotIdsRef.current = allIds
+      setNewlyAppearedLotIds(new Set())
     }
-  }, [currentPage, allLots, isOffersPageActive])
+    setIsOffersPageActive(true)
+  }, [allLots, isOffersPageActive])
 
   // Загрузка лотов
   const fetchLots = useCallback(async () => {
@@ -187,7 +156,7 @@ function App() {
         return lot
       })
 
-      if (isOffersPageActive && currentPage === 'offers') {
+      if (isOffersPageActive) {
         // Используем normalizedWithLocalChanges для консистентности с setAllLots
         const currentIds = new Set(normalizedWithLocalChanges.map(lot => lot.id))
         const newIds = normalizedWithLocalChanges
@@ -220,7 +189,7 @@ function App() {
       setStatusError(true)
       showToast('Ошибка загрузки лотов: ' + e.message, 'error')
     }
-  }, [currentPage, isOffersPageActive, showToast])
+  }, [isOffersPageActive, showToast])
 
   // Загрузка сохраненных изменений статусов при монтировании
   useEffect(() => {
@@ -229,11 +198,10 @@ function App() {
 
   // Автообновление
   useEffect(() => {
-    if (currentPage !== 'offers') return
     fetchLots()
     const id = setInterval(fetchLots, Math.max(2, Number(refreshInterval) || 5) * 1000)
     return () => clearInterval(id)
-  }, [currentPage, fetchLots, refreshInterval])
+  }, [fetchLots, refreshInterval])
 
   // Фильтрация
   const filteredLots = useMemo(() => {
@@ -372,28 +340,89 @@ function App() {
     }
   }, [showToast])
 
-  // Если не авторизован
-  if (!isAuthenticated) {
+  if (currentPage === 'clients') {
     return (
       <div className="app">
-        <Login onLoginSuccess={handleLoginSuccess} />
+        <div className="app-header">
+          <div className="app-title">
+            <h1>Клиенты</h1>
+            <div style={{ marginTop: '8px' }}>
+              <button
+                onClick={() => setCurrentPage('offers')}
+                className="btn btn-outline"
+                style={{
+                  padding: '10px 16px',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: '18px' }}>
+                  description
+                </span>
+                Предложения поставщиков
+              </button>
+            </div>
+          </div>
+        </div>
+        <Clients />
+        <div className="toast-container">
+          {toasts.map(toast => (
+            <Toast
+              key={toast.id}
+              message={toast.message}
+              type={toast.type}
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (currentPage === 'suppliers') {
+    return (
+      <div className="app">
+        <div className="app-header">
+          <div className="app-title">
+            <h1>Поставщики</h1>
+            <div style={{ marginTop: '8px' }}>
+              <button
+                onClick={() => setCurrentPage('offers')}
+                className="btn btn-outline"
+                style={{
+                  padding: '10px 16px',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: '18px' }}>
+                  description
+                </span>
+                Предложения поставщиков
+              </button>
+            </div>
+          </div>
+        </div>
+        <Suppliers />
+        <div className="toast-container">
+          {toasts.map(toast => (
+            <Toast
+              key={toast.id}
+              message={toast.message}
+              type={toast.type}
+            />
+          ))}
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="app-layout">
-      <Sidebar
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
-        currentUser={currentUser}
-        onLogout={handleLogout}
-      />
-
-      <div className="app-content">
-        <div className="app">
-          {currentPage === 'offers' && (
-            <>
+    <div className="app">
+      <>
               <div className="app-header">
                 <div className="app-title">
                   <h1>Предложения поставщиков</h1>
@@ -401,7 +430,7 @@ function App() {
                     Выбирайте лоты чекбоксами и отправляйте клиентам кнопками сверху
                   </div>
 
-                  <div style={{ marginTop: '8px' }}>
+                  <div style={{ marginTop: '8px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <button
                       onClick={handleNotifySuppliers}
                       disabled={notifyLoading}
@@ -418,6 +447,38 @@ function App() {
                         campaign
                       </span>
                       Уведомить поставщиков
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage('clients')}
+                      className="btn btn-outline"
+                      style={{
+                        padding: '10px 16px',
+                        fontSize: '13px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <span className="material-icons" style={{ fontSize: '18px' }}>
+                        people
+                      </span>
+                      Клиенты
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage('suppliers')}
+                      className="btn btn-outline"
+                      style={{
+                        padding: '10px 16px',
+                        fontSize: '13px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <span className="material-icons" style={{ fontSize: '18px' }}>
+                        business
+                      </span>
+                      Поставщики
                     </button>
                   </div>
                 </div>
@@ -474,14 +535,6 @@ function App() {
                 </div>
 
                 <div className="toolbar-right">
-                  <button
-                    className="btn btn-outline"
-                    onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
-                    title="Переключить тему"
-                  >
-                    {theme === 'dark' ? '🌙 Тёмная тема' : '☀️ Светлая тема'}
-                  </button>
-
                   <button
                     className="btn btn-outline"
                     onClick={() => {
@@ -575,7 +628,13 @@ function App() {
 
               <div className="lots-container">
                 {filteredLots.length === 0 ? (
-                  <div className="empty">Нет лотов со статусом parsed.</div>
+                  <div className="empty">
+                    {allLots.length === 0 
+                      ? 'Лоты не загружены' 
+                      : statusFilter !== 'all' 
+                        ? `Нет лотов со статусом "${statusFilter}"` 
+                        : 'Нет лотов'}
+                  </div>
                 ) : (
                   filteredLots.map(lot => {
                     const isNewlyAppeared = newlyAppearedLotIds.has(lot.id)
@@ -592,25 +651,16 @@ function App() {
                   })
                 )}
               </div>
-            </>
-          )}
+      </>
 
-          {currentPage === 'warehouse' && <Warehouse />}
-          {currentPage === 'products' && <Products />}
-          {currentPage === 'clients' && <Clients />}
-          {currentPage === 'deals' && <Deals />}
-          {currentPage === 'suppliers' && <Suppliers />}
-        </div>
-
-        <div className="toast-container">
-          {toasts.map(toast => (
-            <Toast
-              key={toast.id}
-              message={toast.message}
-              type={toast.type}
-            />
-          ))}
-        </div>
+      <div className="toast-container">
+        {toasts.map(toast => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+          />
+        ))}
       </div>
     </div>
   )

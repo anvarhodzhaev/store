@@ -1,203 +1,172 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './Suppliers.css';
 
 const API_BASE = 'https://quageyamoulu.beget.app/webhook';
 
 const LIST_URL = `${API_BASE}/suppliers`;
-
 const SAVE_URL = `${API_BASE}/suppliers/save`;
-
 const DELETE_URL = `${API_BASE}/suppliers/delete`;
 
+// Оставляем те же функции статуса, но статус будем выводить из is_active
 function getStatusLabel(status) {
   if (!status) return 'Активен';
-
-  const s = status.toLowerCase();
-
-  if (s === 'blocked') return 'Заблокирован';
-
+  const s = String(status).toLowerCase();
   if (s === 'inactive') return 'Неактивен';
-
+  if (s === 'blocked') return 'Заблокирован';
   return 'Активен';
 }
 
 function getStatusClass(status) {
-  const s = (status || 'active').toLowerCase();
-
-  if (s === 'blocked') return 'supplier-status supplier-status--blocked';
-
+  const s = String(status || 'active').toLowerCase();
   if (s === 'inactive') return 'supplier-status supplier-status--inactive';
-
+  if (s === 'blocked') return 'supplier-status supplier-status--blocked';
   return 'supplier-status supplier-status--active';
 }
 
 const emptySupplier = {
   id: null,
   name: '',
-  phone: '',
   whatsapp_id: '',
-  region: '',
-  company: '',
-  status: 'active',
+  whatsapp_type: 'user',   // user/group (как у тебя в БД)
+  is_active: true,
+  reminder_min: 0,
+  notes: '',
 };
 
-export default function SuppliersPage() {
+export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
-
   const [isLoading, setIsLoading] = useState(false);
 
   const [search, setSearch] = useState('');
-
-  const [regionFilter, setRegionFilter] = useState('Все');
-
-  const [statusFilter, setStatusFilter] = useState('Все');
+  const [activeFilter, setActiveFilter] = useState('Все'); // Все | active | inactive
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const [editingSupplier, setEditingSupplier] = useState(emptySupplier);
-
+  const [editingSupplier, setEditingSupplier] = useState({ ...emptySupplier });
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchSuppliers = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-
       const res = await fetch(LIST_URL);
-
       const data = await res.json();
 
-      setSuppliers(Array.isArray(data) ? data : []);
-
-    } catch (e) {
-      console.error('Ошибка загрузки поставщиков', e);
-
+      // Ожидаем массив
+      const rows = Array.isArray(data) ? data : (data?.data || []);
+      setSuppliers(Array.isArray(rows) ? rows : []);
+    } catch (err) {
+      console.error('Ошибка загрузки suppliers:', err);
+      setSuppliers([]);
     } finally {
       setIsLoading(false);
-
     }
   };
 
   useEffect(() => {
     fetchSuppliers();
-
   }, []);
 
-  const regions = ['Все', ...Array.from(new Set(suppliers.map(s => s.region).filter(Boolean)))];
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
 
-  const statuses = ['Все', 'active', 'inactive', 'blocked'];
+    return suppliers.filter((s) => {
+      const text = `${s.name ?? ''} ${s.whatsapp_id ?? ''} ${s.whatsapp_type ?? ''}`.toLowerCase();
 
-  const filtered = suppliers.filter(s => {
-    const text = `${s.name || ''} ${s.phone || ''} ${s.company || ''}`.toLowerCase();
+      if (term && !text.includes(term)) return false;
 
-    const s_term = search.toLowerCase();
+      // фильтр активных
+      const isActive = s.is_active === false ? false : true; // по умолчанию true
+      const status = isActive ? 'active' : 'inactive';
 
-    if (s_term && !text.includes(s_term)) return false;
+      if (activeFilter !== 'Все' && status !== activeFilter) return false;
 
-    if (regionFilter !== 'Все' && s.region !== regionFilter) return false;
+      return true;
+    });
+  }, [suppliers, search, activeFilter]);
 
-    if (statusFilter !== 'Все') {
-      if ((s.status || 'active') !== statusFilter) return false;
-    }
-
-    return true;
-
-  });
-
-  const handleOpenWhatsApp = (supplier) => {
-    const phone = (supplier.phone || '').replace(/[^\d]/g, '');
-
-    if (!phone) return;
-
-    const url = `https://wa.me/${phone}`;
-
-    window.open(url, '_blank');
-
-  };
-
-  const openAddModal = () => {
+  const openCreateModal = () => {
     setEditingSupplier({ ...emptySupplier });
-
     setIsModalOpen(true);
-
   };
 
   const openEditModal = (supplier) => {
-    setEditingSupplier({ ...emptySupplier, ...supplier });
-
+    setEditingSupplier({
+      id: supplier.id ?? null,
+      name: supplier.name ?? '',
+      whatsapp_id: supplier.whatsapp_id ?? '',
+      whatsapp_type: supplier.whatsapp_type ?? 'user',
+      is_active: supplier.is_active === false ? false : true,
+      reminder_min: supplier.reminder_min ?? 0,
+      notes: supplier.notes ?? '',
+    });
     setIsModalOpen(true);
-
   };
 
   const closeModal = () => {
     if (isSaving) return;
-
     setIsModalOpen(false);
-
+    setEditingSupplier({ ...emptySupplier });
   };
 
   const handleChangeField = (field, value) => {
-    setEditingSupplier(prev => ({ ...prev, [field]: value }));
-
+    setEditingSupplier((prev) => ({ ...prev, [field]: value }));
   };
 
-  const autoFillWhatsapp = () => {
-    // если whatsapp_id пустой — подставляем phone@c.us
-    setEditingSupplier(prev => {
-      if (!prev.phone) return prev;
+  const normalizePayload = (s) => {
+    // reminder_min: число или null
+    let reminder = s.reminder_min;
 
-      if (prev.whatsapp_id) return prev;
+    if (reminder === '' || reminder === null || reminder === undefined) {
+      reminder = null;
+    } else {
+      const n = Number(reminder);
+      reminder = Number.isFinite(n) ? n : null;
+    }
 
-      const digits = prev.phone.replace(/[^\d]/g, '');
-
-      return { ...prev, whatsapp_id: `${digits}@c.us` };
-
-    });
-
+    return {
+      id: s.id ?? null,
+      name: (s.name ?? '').trim(),
+      whatsapp_id: (s.whatsapp_id ?? '').trim(),
+      whatsapp_type: (s.whatsapp_type ?? 'user').trim(),
+      is_active: !!s.is_active,
+      reminder_min: reminder,
+      notes: s.notes ?? '',
+    };
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
 
-    if (!editingSupplier.name || !editingSupplier.phone) {
-      alert('Название и телефон обязательны');
+    const payload = normalizePayload(editingSupplier);
 
+    if (!payload.name) {
+      alert('Имя обязательно');
       return;
-
     }
 
-    try {
-      setIsSaving(true);
+    setIsSaving(true);
 
+    try {
       const res = await fetch(SAVE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingSupplier),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
-
       console.log('Saved supplier:', data);
 
       await fetchSuppliers();
-
       setIsModalOpen(false);
-
     } catch (err) {
-      console.error('Ошибка сохранения поставщика', err);
-
-      alert('Ошибка при сохранении поставщика');
-
+      console.error('Ошибка сохранения:', err);
+      alert('Ошибка сохранения. Проверь консоль.');
     } finally {
       setIsSaving(false);
-
     }
   };
 
   const handleDelete = async (supplier) => {
-    if (!supplier.id) return;
-
     const ok = window.confirm(`Удалить поставщика "${supplier.name}"?`);
-
     if (!ok) return;
 
     try {
@@ -208,18 +177,13 @@ export default function SuppliersPage() {
       });
 
       const data = await res.json();
-
       console.log('Deleted supplier:', data);
 
-      setSuppliers(prev => prev.filter(s => s.id !== supplier.id));
-
+      await fetchSuppliers();
     } catch (err) {
-      console.error('Ошибка удаления поставщика', err);
-
-      alert('Ошибка при удалении поставщика');
-
+      console.error('Ошибка удаления:', err);
+      alert('Ошибка удаления. Проверь консоль.');
     }
-
   };
 
   return (
@@ -228,11 +192,11 @@ export default function SuppliersPage() {
         <div>
           <h1 className="page-title">Поставщики</h1>
           <p className="page-subtitle">
-            База поставщиков. Управление контактами и статусами.
+            База поставщиков. Управление контактами и напоминаниями.
           </p>
         </div>
 
-        <button className="btn btn-primary" type="button" onClick={openAddModal}>
+        <button className="btn btn-primary" type="button" onClick={openCreateModal}>
           + Добавить поставщика
         </button>
       </div>
@@ -244,37 +208,22 @@ export default function SuppliersPage() {
             <input
               type="text"
               className="input"
-              placeholder="Название, телефон или компания…"
+              placeholder="Имя или WhatsApp ID…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
           <div className="suppliers-filter">
-            <label>Регион</label>
-            <select
-              className="select"
-              value={regionFilter}
-              onChange={(e) => setRegionFilter(e.target.value)}
-            >
-              {regions.map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="suppliers-filter">
             <label>Статус</label>
             <select
               className="select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              value={activeFilter}
+              onChange={(e) => setActiveFilter(e.target.value)}
             >
-              {statuses.map(s => (
-                <option key={s} value={s}>
-                  {s === 'Все' ? 'Все' : getStatusLabel(s)}
-                </option>
-              ))}
+              <option value="Все">Все</option>
+              <option value="active">Активные</option>
+              <option value="inactive">Неактивные</option>
             </select>
           </div>
         </div>
@@ -289,58 +238,51 @@ export default function SuppliersPage() {
           <table className="suppliers-table">
             <thead>
               <tr>
-                <th>Название</th>
-                <th>Компания</th>
-                <th>Телефон</th>
-                <th>Регион</th>
-                <th>Статус</th>
-                <th></th>
+                <th style={{ width: 70 }}>ID</th>
+                <th>Имя</th>
+                <th>WhatsApp ID</th>
+                <th style={{ width: 120 }}>Тип</th>
+                <th style={{ width: 130 }}>Статус</th>
+                <th style={{ width: 140 }}>Reminder (мин)</th>
+                <th style={{ width: 150 }}>Действия</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(s => (
-                <tr key={s.id}>
-                  <td>{s.name}</td>
-                  <td>{s.company || '—'}</td>
-                  <td>
-                    <div className="suppliers-phone-cell">
-                      <span>{s.phone}</span>
-                      <button
-                        type="button"
-                        className="btn-icon btn-wa"
-                        onClick={() => handleOpenWhatsApp(s)}
-                        title="Написать в WhatsApp"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                  <td>{s.region || '—'}</td>
-                  <td>
-                    <span className={getStatusClass(s.status)}>
-                      {getStatusLabel(s.status)}
-                    </span>
-                  </td>
-                  <td className="suppliers-actions">
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      type="button"
-                      onClick={() => openEditModal(s)}
-                    >
-                      Редактировать
-                    </button>
-                    <button
-                      className="btn btn-danger btn-sm"
-                      type="button"
-                      onClick={() => handleDelete(s)}
-                    >
-                      Удалить
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((s) => {
+                  const isActive = s.is_active === false ? false : true;
+                  const status = isActive ? 'active' : 'inactive';
+
+                  return (
+                    <tr key={s.id}>
+                      <td>{s.id}</td>
+                      <td>{s.name || '—'}</td>
+                      <td style={{ fontFamily: 'monospace' }}>{s.whatsapp_id || '—'}</td>
+                      <td>{s.whatsapp_type || '—'}</td>
+                      <td>
+                        <span className={getStatusClass(status)}>
+                          {getStatusLabel(status)}
+                        </span>
+                      </td>
+                      <td>{s.reminder_min ?? '—'}</td>
+                      <td className="suppliers-actions">
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          type="button"
+                          onClick={() => openEditModal(s)}
+                        >
+                          Редактировать
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          type="button"
+                          onClick={() => handleDelete(s)}
+                        >
+                          Удалить
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         )}
@@ -348,14 +290,14 @@ export default function SuppliersPage() {
 
       {isModalOpen && (
         <div className="modal-backdrop" onClick={closeModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2 className="modal-title">
               {editingSupplier.id ? 'Редактировать поставщика' : 'Новый поставщик'}
             </h2>
 
             <form className="modal-body" onSubmit={handleSave}>
               <div className="modal-row">
-                <label>Название *</label>
+                <label>Имя *</label>
                 <input
                   type="text"
                   className="input"
@@ -366,59 +308,47 @@ export default function SuppliersPage() {
               </div>
 
               <div className="modal-row">
-                <label>Телефон *</label>
-                <input
-                  type="text"
-                  className="input"
-                  value={editingSupplier.phone}
-                  onChange={(e) => handleChangeField('phone', e.target.value)}
-                  onBlur={autoFillWhatsapp}
-                  required
-                />
-              </div>
-
-              <div className="modal-row">
                 <label>WhatsApp ID</label>
                 <input
                   type="text"
                   className="input"
-                  placeholder="79998887766@c.us"
-                  value={editingSupplier.whatsapp_id || ''}
+                  placeholder="например: 79858594292@c.us"
+                  value={editingSupplier.whatsapp_id}
                   onChange={(e) => handleChangeField('whatsapp_id', e.target.value)}
                 />
               </div>
 
               <div className="modal-row">
-                <label>Регион</label>
-                <input
-                  type="text"
-                  className="input"
-                  value={editingSupplier.region || ''}
-                  onChange={(e) => handleChangeField('region', e.target.value)}
-                />
-              </div>
-
-              <div className="modal-row">
-                <label>Компания</label>
-                <input
-                  type="text"
-                  className="input"
-                  value={editingSupplier.company || ''}
-                  onChange={(e) => handleChangeField('company', e.target.value)}
-                />
-              </div>
-
-              <div className="modal-row">
-                <label>Статус</label>
+                <label>WhatsApp тип</label>
                 <select
                   className="select"
-                  value={editingSupplier.status || 'active'}
-                  onChange={(e) => handleChangeField('status', e.target.value)}
+                  value={editingSupplier.whatsapp_type || 'user'}
+                  onChange={(e) => handleChangeField('whatsapp_type', e.target.value)}
                 >
-                  <option value="active">Активен</option>
-                  <option value="inactive">Неактивен</option>
-                  <option value="blocked">Заблокирован</option>
+                  <option value="user">user</option>
+                  <option value="group">group</option>
                 </select>
+              </div>
+
+              <div className="modal-row" style={{ alignItems: 'center', gap: 12 }}>
+                <label style={{ margin: 0 }}>Активен</label>
+                <input
+                  type="checkbox"
+                  checked={!!editingSupplier.is_active}
+                  onChange={(e) => handleChangeField('is_active', e.target.checked)}
+                />
+              </div>
+
+              <div className="modal-row">
+                <label>Reminder (мин)</label>
+                <input
+                  type="number"
+                  className="input"
+                  min={0}
+                  step={1}
+                  value={editingSupplier.reminder_min ?? 0}
+                  onChange={(e) => handleChangeField('reminder_min', e.target.value)}
+                />
               </div>
 
               <div className="modal-footer">
@@ -430,11 +360,7 @@ export default function SuppliersPage() {
                 >
                   Отмена
                 </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isSaving}
-                >
+                <button type="submit" className="btn btn-primary" disabled={isSaving}>
                   {isSaving ? 'Сохранение…' : 'Сохранить'}
                 </button>
               </div>
@@ -445,4 +371,3 @@ export default function SuppliersPage() {
     </div>
   );
 }
-
